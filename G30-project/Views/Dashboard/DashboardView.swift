@@ -7,6 +7,11 @@ struct DashboardView: View{
                 .font(.title2).bold()
             Text("Multi-city list")
                 .foregroundStyle(.secondary)
+            NavigationLink {
+                CityDeepDive(data: .mockToronto)
+            } label: {
+                Text("Toronto")
+            }
         }
         .navigationTitle("Weather")
     }
