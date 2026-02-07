@@ -59,3 +59,13 @@ extension CityWeather {
         )
 }
 
+enum MockNotifications {
+    static let items: [StormNotification] = [
+        .init(title: "Tornado Warning", timeText: "10:15 AM", level: .severe),
+        .init(title: "Severe Thunderstorm Alert", timeText: "8:30 AM", level: .high),
+        .init(title: "Flood Watch Issued", timeText: "Yesterday, 4:00 PM", level: .moderate),
+        .init(title: "Wind Advisory", timeText: "9:15 AM", level: .moderate),
+        .init(title: "Winter Storm Alert", timeText: "April 12, 2:00 PM", level: .low)
+    ]
+}
+
