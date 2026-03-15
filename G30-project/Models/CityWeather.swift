@@ -1,3 +1,5 @@
+import Foundation
+
 struct CityWeather {
     let city: String
     let temperature: String
@@ -7,3 +9,4 @@ struct CityWeather {
     let factors: [StormFactor]
     let theme: WeatherTheme
 }
+
