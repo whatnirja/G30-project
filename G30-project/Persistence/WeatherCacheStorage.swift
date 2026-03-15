@@ -111,4 +111,19 @@ final class WeatherCacheStorage {
         sqlite3_finalize(statement)
         return result
     }
+    func deleteWeather(for city: String) -> Bool {
+        let query = "DELETE FROM weather_cache WHERE city = ?;"
+
+        var statement: OpaquePointer?
+
+        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+            return false
+        }
+
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(statement, 1, (city as NSString).utf8String, -1, nil)
+
+        return sqlite3_step(statement) == SQLITE_DONE
+    }
 }

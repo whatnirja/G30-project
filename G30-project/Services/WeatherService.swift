@@ -1,29 +1,27 @@
 import Foundation
 
 final class WeatherService {
-
     static let shared = WeatherService()
 
     private init() {}
 
     func fetchWeather(for city: String) async throws -> CityWeather {
-
-        let (lat, lon) = try await GeocodingService.shared.getCoordinates(for: city)
-
-        let urlString = makeWeatherURL(lat: lat, lon: lon)
-
-        guard let url = URL(string: urlString) else {
-            throw APIError.invalidURL
+        guard let stationID = CityStationMapper.stationID(for: city) else {
+            print("No station ID found for city:", city)
+            throw APIError.noData
         }
 
-        let (data, _) = try await URLSession.shared.data(from: url)
+        print("Using station ID:", stationID)
 
-        let decoded = try JSONDecoder().decode(WeatherResponse.self, from: data)
+        let dto = try await GeoMetService.shared.fetchCityWeatherItem(itemID: stationID)
+        let mapped = GeoMetCityPageMapper.map(dto: dto,city: city)
+        print("Mapped weather for:", mapped.city)
 
-        return WeatherMapper.map(response: decoded, city: city)
+        return mapped
     }
 
-    private func makeWeatherURL(lat: Double, lon: Double) -> String {
-        return "API_URL_PLACEHOLDER?lat=\(lat)&lon=\(lon)"
+    func fetchWeather(for city: String, latitude: Double, longitude: Double) async throws -> CityWeather {
+        // for now ignore lat/lon and use city->station mapping
+        return try await fetchWeather(for: city)
     }
 }

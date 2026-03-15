@@ -5,4 +5,5 @@ enum APIError: Error {
     case requestFailed
     case decodingFailed
     case noData
+    case invalidResponse
 }

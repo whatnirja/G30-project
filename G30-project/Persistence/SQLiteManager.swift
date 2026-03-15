@@ -11,6 +11,7 @@ final class SQLiteManager {
     static let shared = SQLiteManager()
 
     private var db: OpaquePointer?
+    
 
     private init() {
         openDatabase()

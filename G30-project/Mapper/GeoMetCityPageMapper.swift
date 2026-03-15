@@ -1,15 +1,19 @@
 import Foundation
 
 struct GeoMetCityPageMapper {
-    static func map(dto: GeoMetCityPageDTO) -> CityWeather {
-        let props = dto.properties
+    static func map(dto: GeoMetCityPageDTO, city: String) -> CityWeather {
 
-        let cityName = props.name.en ?? "Unknown City"
+        let props = dto.properties
+        let cityName = city
+
+        
 
         let currentTempValue = props.currentConditions?.temperature?.value?.en
         let currentTemp = currentTempValue.map { "\(Int($0))°" } ?? "--°"
 
-        let todayForecast = props.forecastGroup?.forecasts?.first
+        let forecasts = props.forecastGroup?.forecasts ?? []
+        let todayForecast = forecasts.first
+        let highLow = makeHighLow(from: forecasts)
 
         let condition =
             props.currentConditions?.condition?.en ??
@@ -18,7 +22,7 @@ struct GeoMetCityPageMapper {
             props.forecastGroup?.textSummary?.en ??
             "Unknown"
 
-        let highLow = makeHighLow(from: todayForecast)
+        
 
         return CityWeather(
             city: cityName,
@@ -31,26 +35,26 @@ struct GeoMetCityPageMapper {
         )
     }
 
-    private static func makeHighLow(from forecast: GeoMetCityPageDTO.ForecastPeriodDTO?) -> String {
-        guard let temps = forecast?.temperatures?.temperature else {
-            return ""
-        }
-
+    private static func makeHighLow(from forecasts: [GeoMetCityPageDTO.ForecastPeriodDTO]) -> String {
         var high: Int?
         var low: Int?
 
-        for temp in temps {
-            guard let value = temp.value?.en else { continue }
-            let intValue = Int(value)
-            let tempClass = temp.className?.en?.lowercased() ?? ""
+        for forecast in forecasts.prefix(3) {
+            guard let temps = forecast.temperatures?.temperature else { continue }
 
-            if tempClass == "high" {
-                high = intValue
-            } else if tempClass == "low" {
-                low = intValue
-            } else {
-                if high == nil || intValue > high! { high = intValue }
-                if low == nil || intValue < low! { low = intValue }
+            for temp in temps {
+                guard let value = temp.value?.en else { continue }
+                let intValue = Int(value)
+                let tempClass = temp.className?.en?.lowercased() ?? ""
+
+                if tempClass == "high" {
+                    if high == nil || intValue > high! { high = intValue }
+                } else if tempClass == "low" {
+                    if low == nil || intValue < low! { low = intValue }
+                } else {
+                    if high == nil || intValue > high! { high = intValue }
+                    if low == nil || intValue < low! { low = intValue }
+                }
             }
         }
 
