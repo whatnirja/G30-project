@@ -7,6 +7,9 @@ struct WeatherMapper {
 
         return CityWeather(
             city: city,
+            country: "Canada",
+            latitude: 0.0,
+            longitude: 0.0,
             temperature: "\(Int(response.current.temperature))°",
             condition: weatherCondition(from: response.current.weatherCode),
             highLow: "H:\(high)°  L:\(low)°",

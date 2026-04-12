@@ -3,6 +3,9 @@ import Foundation
 extension CityWeather {
     static let mockToronto = CityWeather(
         city: "Toronto",
+        country: "Canada",
+        latitude: 0.0,
+        longitude: 0.0,
         temperature: "19°",
         condition: "Mostly Rainy",
         highLow: "H: 24°  |  L: 18°",
@@ -20,10 +23,14 @@ extension CityWeather {
             .init(title: "Hail Possible", icon: "cloud.hail.fill")
         ],
         theme: .rainy
+        
     )
     
     static let mockLondon = CityWeather(
             city: "London",
+            country: "Canada",
+            latitude: 0.0,
+            longitude: 0.0,
             temperature: "3°",
             condition: "Heavy Rain",
             highLow: "H: 16°  |  L: 8°",
@@ -42,6 +49,9 @@ extension CityWeather {
 
         static let mockWindsor = CityWeather(
             city: "Windsor",
+            country: "Canada",
+            latitude: 0.0,
+            longitude: 0.0,
             temperature: "-9°",
             condition: "Storm Incoming",
             highLow: "H: 24°  |  L: -18°",

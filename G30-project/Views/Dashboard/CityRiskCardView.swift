@@ -7,17 +7,25 @@ struct CityRiskCardView: View {
     let country: String
     let risk: String
     let symbol: String
-    let onDelete: () -> Void
+    let theme: WeatherTheme
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(hex: "#132D78"))
+                .fill(
+                    LinearGradient(
+                        colors: theme.gradient,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(maxWidth: .infinity)
                 .frame(height: 160)
                 .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 8)
 
             DiagonalOverlay()
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .frame(maxWidth: .infinity)
                 .frame(height: 160)
                 .opacity(0.9)
 
@@ -55,21 +63,6 @@ struct CityRiskCardView: View {
                 }
             }
             .padding(.horizontal, 18)
-        }
-
-        
-        .overlay(alignment: .topTrailing) {
-            Button {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(8)
-                    .background(.black.opacity(0.35))
-                    .clipShape(Circle())
-            }
-            .padding(10)
         }
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
