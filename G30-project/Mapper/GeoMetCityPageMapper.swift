@@ -1,12 +1,9 @@
 import Foundation
 
 struct GeoMetCityPageMapper {
-    static func map(dto: GeoMetCityPageDTO, city: String) -> CityWeather {
-
+    static func map(dto: GeoMetCityPageDTO, city: String, country: String, lat: Double, lon: Double) -> CityWeather {
         let props = dto.properties
         let cityName = city
-
-        
 
         let currentTempValue = props.currentConditions?.temperature?.value?.en
         let currentTemp = currentTempValue.map { "\(Int($0))°" } ?? "--°"
@@ -22,10 +19,11 @@ struct GeoMetCityPageMapper {
             props.forecastGroup?.textSummary?.en ??
             "Unknown"
 
-        
-
         return CityWeather(
             city: cityName,
+            country: country,
+            latitude: lat,
+            longitude: lon,
             temperature: currentTemp,
             condition: condition,
             highLow: highLow,
