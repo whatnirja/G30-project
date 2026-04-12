@@ -6,69 +6,76 @@ final class GeocodingService {
 
     private init() {}
 
-    func getCoordinates(for city: String) async throws -> (Double, Double) {
-        print("Geocoding city:", city)
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = "\(city), Ontario, Canada"
-        request.resultTypes = .address
-
-        let search = MKLocalSearch(request: request)
-        let response = try await search.start()
-
-        guard let item = response.mapItems.first else {
-            throw APIError.noData
-        }
-
-        let placemark = item.placemark
-
-        guard let province = placemark.administrativeArea,
-              province.lowercased() == "on" || province.lowercased() == "ontario" else {
-            throw APIError.noData
-        }
-
-        let coordinate = placemark.coordinate
-        print("Geocoding success:", coordinate.latitude, coordinate.longitude)
-        return (coordinate.latitude, coordinate.longitude)
-    }
-    
     func searchCities(query: String) async throws -> [CitySearchResult] {
-        
+        let cleanedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanedQuery.isEmpty else { return [] }
+
         let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = query
+        request.naturalLanguageQuery = "\(cleanedQuery), Ontario, Canada"
         request.resultTypes = .address
 
-        let search = MKLocalSearch(request: request)
-        let response = try await search.start()
+        let ontarioCenter = CLLocationCoordinate2D(latitude: 43.6532, longitude: -79.3832)
+        request.region = MKCoordinateRegion(
+            center: ontarioCenter,
+            span: MKCoordinateSpan(latitudeDelta: 8.0, longitudeDelta: 8.0)
+        )
 
-        let results = response.mapItems.compactMap { item -> CitySearchResult? in
+        let response = try await MKLocalSearch(request: request).start()
+        let queryLower = cleanedQuery.lowercased()
+
+        let results: [CitySearchResult] = response.mapItems.compactMap { item in
             let placemark = item.placemark
 
-            guard let city = placemark.locality ?? placemark.name else {
+            guard let city = placemark.locality,
+                  !city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
                 return nil
             }
 
             let province = placemark.administrativeArea ?? ""
-            let country = placemark.country ?? "Canada"
-            let latitude = placemark.coordinate.latitude
-            let longitude = placemark.coordinate.longitude
+            let country = placemark.country ?? ""
+
+            let isOntario = province.lowercased() == "on" || province.lowercased() == "ontario"
+            let isCanada = country.lowercased() == "canada"
+
+            guard isOntario && isCanada else {
+                return nil
+            }
 
             return CitySearchResult(
                 cityName: city,
                 province: province,
                 country: country,
-                latitude: latitude,
-                longitude: longitude
+                latitude: placemark.coordinate.latitude,
+                longitude: placemark.coordinate.longitude
             )
         }
 
-        let uniqueResults: [CitySearchResult] = Array(
-            Dictionary<String, CitySearchResult>(
+        let uniqueResults = Array(
+            Dictionary(
                 results.map { ("\($0.cityName.lowercased())-\($0.province.lowercased())", $0) },
                 uniquingKeysWith: { first, _ in first }
             ).values
         )
 
-        return uniqueResults
+        func score(_ city: String) -> Int {
+            let name = city.lowercased()
+            if name == queryLower { return 0 }
+            if name.hasPrefix(queryLower) { return 1 }
+            if name.contains(queryLower) { return 2 }
+            return 3
+        }
+
+        return uniqueResults.sorted { lhs, rhs in
+            let lhsScore = score(lhs.cityName)
+            let rhsScore = score(rhs.cityName)
+
+            if lhsScore != rhsScore {
+                return lhsScore < rhsScore
+            }
+
+            return lhs.cityName.lowercased() < rhs.cityName.lowercased()
+        }
     }
-    
 }

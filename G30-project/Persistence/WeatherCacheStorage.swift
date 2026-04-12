@@ -1,10 +1,3 @@
-//
-//  WeatherCacheStorage.swift
-//  G30-project
-//
-//  Created by Gia Nagpal on 2026-03-13.
-//
-
 import Foundation
 import SQLite3
 
@@ -66,6 +59,9 @@ final class WeatherCacheStorage {
 
         return CityWeather(
             city: city,
+            country: "Canada",
+            latitude: 0.0,
+            longitude: 0.0,
             temperature: temperature,
             condition: condition,
             highLow: highLow,
@@ -98,6 +94,9 @@ final class WeatherCacheStorage {
             result.append(
                 CityWeather(
                     city: city,
+                    country: "Canada",
+                    latitude: 0.0,
+                    longitude: 0.0,
                     temperature: temperature,
                     condition: condition,
                     highLow: highLow,
@@ -111,8 +110,9 @@ final class WeatherCacheStorage {
         sqlite3_finalize(statement)
         return result
     }
+
     func deleteWeather(for city: String) -> Bool {
-        let query = "DELETE FROM weather_cache WHERE city = ?;"
+        let query = "DELETE FROM weather_cache WHERE city_name = ?;"
 
         var statement: OpaquePointer?
 

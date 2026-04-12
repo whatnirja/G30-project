@@ -17,10 +17,14 @@ final class DashboardViewModel: ObservableObject {
     private let weatherCacheStorage = WeatherCacheStorage()
 
     init() {
-        loadDashboard()
+        loadDashboardFromCache()
+
+        Task {
+            await refreshDashboard()
+        }
     }
 
-    func loadDashboard() {
+    func loadDashboardFromCache() {
         let savedCities = cityStorage.fetchCities()
         var items: [DashboardItem] = []
 
@@ -40,6 +44,55 @@ final class DashboardViewModel: ObservableObject {
         }
 
         dashboardItems = items
+    }
+
+    func refreshDashboard() async {
+        let savedCities = cityStorage.fetchCities()
+        var refreshedItems: [DashboardItem] = []
+
+        isLoading = true
+        errorMessage = nil
+
+        for savedCity in savedCities {
+            do {
+                let freshWeather = try await WeatherService.shared.fetchWeather(
+                    for: savedCity.cityName,
+                    latitude: savedCity.latitude,
+                    longitude: savedCity.longitude
+                )
+
+                _ = weatherCacheStorage.saveWeather(freshWeather)
+
+                let risk = riskLabel(from: freshWeather.condition)
+                let icon = riskIcon(from: freshWeather.condition)
+
+                refreshedItems.append(
+                    DashboardItem(
+                        data: freshWeather,
+                        riskLabel: risk,
+                        icon: icon
+                    )
+                )
+            } catch {
+                if let cachedWeather = weatherCacheStorage.fetchWeather(for: savedCity.cityName) {
+                    let risk = riskLabel(from: cachedWeather.condition)
+                    let icon = riskIcon(from: cachedWeather.condition)
+
+                    refreshedItems.append(
+                        DashboardItem(
+                            data: cachedWeather,
+                            riskLabel: risk,
+                            icon: icon
+                        )
+                    )
+                }
+
+                print("Failed to refresh weather for \(savedCity.cityName): \(error.localizedDescription)")
+            }
+        }
+
+        dashboardItems = refreshedItems
+        isLoading = false
     }
 
     func searchCities() async {
@@ -86,9 +139,10 @@ final class DashboardViewModel: ObservableObject {
                 latitude: result.latitude,
                 longitude: result.longitude
             )
-            _ = weatherCacheStorage.saveWeather(weather)
 
-            loadDashboard()
+            _ = weatherCacheStorage.saveWeather(weather)
+            await refreshDashboard()
+
             searchText = ""
             searchResults = []
         } catch {
@@ -125,7 +179,7 @@ final class DashboardViewModel: ObservableObject {
             return "sun.max.fill"
         }
     }
-    
+
     func searchAndPreviewCity() async {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -171,7 +225,7 @@ final class DashboardViewModel: ObservableObject {
 
         isSearching = false
     }
-    
+
     func savePreviewToDashboard() {
         guard let result = previewSearchResult,
               let previewItem = previewItem else {
@@ -188,14 +242,17 @@ final class DashboardViewModel: ObservableObject {
 
         if inserted {
             _ = weatherCacheStorage.saveWeather(previewItem.data)
-            loadDashboard()
+
+            Task {
+                await refreshDashboard()
+            }
 
             searchText = ""
             self.previewItem = nil
             previewSearchResult = nil
         }
     }
-    
+
     func removeCity(_ item: DashboardItem) {
         let deletedCity = cityStorage.deleteCity(cityName: item.data.city)
         let deletedWeather = weatherCacheStorage.deleteWeather(for: item.data.city)
@@ -203,6 +260,6 @@ final class DashboardViewModel: ObservableObject {
         print("Deleted city:", deletedCity)
         print("Deleted weather:", deletedWeather)
 
-        loadDashboard()
+        dashboardItems.removeAll { $0.data.city == item.data.city }
     }
 }
