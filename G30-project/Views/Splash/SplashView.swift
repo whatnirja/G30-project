@@ -1,72 +1,70 @@
 import SwiftUI
 
 struct SplashView: View {
-    @State private var goNext = false
-
     var body: some View {
-        Group {
-            if goNext {
-                // This is your "Home" after splash.
-                // If your app uses AppTabView as home, keep it like this:
-                AppTabView()
-            } else {
-                splashUI
-            }
-        }
-        .onAppear {
-            // 2.3 seconds = similar to 2–3 seconds in the PDF
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.3) {
-                withAnimation(.easeInOut) {
-                    goNext = true
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                colors: [
+                    Color(red: 0.60, green: 0.85, blue: 1.0),
+                    Color(red: 0.35, green: 0.65, blue: 0.95),
+                    Color(red: 0.20, green: 0.50, blue: 0.85)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+
+                // Logo
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.25), Color.white.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 150, height: 150)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+
+                    Image(systemName: "cloud.bolt.rain.fill")
+                        .font(.system(size: 60, weight: .medium))
+                        .foregroundStyle(.white)
                 }
-            }
-        }
-    }
 
-    private var splashUI: some View {
-        VStack(spacing: 16) {
-            Spacer()
+                // App Name
+                Text("Storm Predictor")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(.white)
 
-            // Logo (uses Assets image "storm_logo" if available)
-            if let _ = UIImage(named: "storm_logo") {
-                Image("storm_logo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 110, height: 110)
-            } else {
-                // fallback if you didn’t add the asset yet
-                Image(systemName: "cloud.bolt.rain.fill")
-                    .font(.system(size: 72, weight: .bold))
-                    .foregroundStyle(.blue)
-            }
+                
+                // Team Members
+                VStack(spacing: 6) {
+                    Text("Team Members:")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.top, 12)
 
-            Text("Storm Predictor")
-                .font(.system(size: 28, weight: .semibold))
-
-            Text("Loading...")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            VStack(spacing: 6) {
-                Text("Team G30:")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 2) {
+                    Text("Nirja Arun Dabhi")
                     Text("Rishamnoor Kaur")
                     Text("Danuja Shankar")
-                    Text("Nirja Arun Dabhi")
                     Text("Gia Nagpal")
                 }
-                .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.92))
             }
-
-            Spacer()
+            .multilineTextAlignment(.center)
+            .padding()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
     }
+}
+
+#Preview {
+    SplashView()
 }

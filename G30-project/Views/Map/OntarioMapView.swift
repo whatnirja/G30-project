@@ -317,22 +317,24 @@ struct OntarioMapView: View {
     private func loadRealRegions() {
         let savedCities = cityStorage.fetchCities()
 
-        let weatherItems: [CityWeather] = savedCities.compactMap { savedCity in
+        let weatherItems: [CityWeather] = savedCities.compactMap { savedCity -> CityWeather? in
             guard let cached = weatherCacheStorage.fetchWeather(for: savedCity.cityName) else {
                 return nil
             }
 
             return CityWeather(
-                city: savedCity.cityName,
-                country: savedCity.country,
-                latitude: savedCity.latitude,
-                longitude: savedCity.longitude,
-                temperature: cached.temperature,
-                condition: cached.condition,
-                highLow: cached.highLow,
-                hourly: cached.hourly,
-                factors: cached.factors,
-                theme: cached.theme
+                city:           savedCity.cityName,
+                country:        savedCity.country,
+                latitude:       savedCity.latitude,
+                longitude:      savedCity.longitude,
+                temperature:    cached.temperature,
+                condition:      cached.condition,
+                highLow:        cached.highLow,
+                hourly:         cached.hourly,
+                factors:        cached.factors,
+                alerts:         cached.alerts,
+                stormRiskScore: cached.stormRiskScore,
+                theme:          cached.theme
             )
         }
 

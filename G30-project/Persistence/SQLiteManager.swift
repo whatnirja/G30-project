@@ -4,6 +4,7 @@
 //
 //  Created by Gia Nagpal on 2026-03-13.
 //
+
 import Foundation
 import SQLite3
 
@@ -11,7 +12,6 @@ final class SQLiteManager {
     static let shared = SQLiteManager()
 
     private var db: OpaquePointer?
-    
 
     private init() {
         openDatabase()
@@ -71,8 +71,30 @@ final class SQLiteManager {
         );
         """
 
+        let createStormNotificationsTable = """
+        CREATE TABLE IF NOT EXISTS storm_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            city TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            source TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            issued_at TEXT NOT NULL,
+            notification_key TEXT NOT NULL UNIQUE
+        );
+        """
+
+        let createDeliveredNotificationsTable = """
+        CREATE TABLE IF NOT EXISTS delivered_notifications (
+            notification_key TEXT PRIMARY KEY,
+            delivered_at TEXT NOT NULL
+        );
+        """
+
         execute(createSavedCitiesTable)
         execute(createWeatherCacheTable)
+        execute(createStormNotificationsTable)
+        execute(createDeliveredNotificationsTable)
     }
 
     private func execute(_ query: String) {
