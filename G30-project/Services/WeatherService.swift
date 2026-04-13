@@ -37,10 +37,21 @@ final class WeatherService {
         let base = try await fetchWeather(for: city)
 
         do {
-            let lat = base.latitude
-            let lon = base.longitude
-            guard lat != 0.0 && lon != 0.0 else { throw APIError.noData }
-            let hourlyResult = try await OpenMeteoService.shared.fetchHourlyData(lat: lat, lon: lon)
+            // Get real coordinates from saved city storage
+            let cityStorage = CityStorage()
+            let savedCities = cityStorage.fetchCities()
+
+            guard let savedCity = savedCities.first(where: {
+                $0.cityName.lowercased() == city.lowercased()
+            }), savedCity.latitude != 0.0, savedCity.longitude != 0.0 else {
+                print("No valid coordinates found for \(city), skipping Open-Meteo")
+                return base
+            }
+
+            let hourlyResult = try await OpenMeteoService.shared.fetchHourlyData(
+                lat: savedCity.latitude,
+                lon: savedCity.longitude
+            )
 
             let enrichedFactors = enrichFactors(
                 base:       base.factors,
@@ -57,8 +68,8 @@ final class WeatherService {
             return CityWeather(
                 city:           base.city,
                 country:        base.country,
-                latitude:       base.latitude,
-                longitude:      base.longitude,
+                latitude:       savedCity.latitude,
+                longitude:      savedCity.longitude,
                 temperature:    base.temperature,
                 condition:      base.condition,
                 highLow:        base.highLow,

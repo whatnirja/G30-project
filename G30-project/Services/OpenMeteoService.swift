@@ -36,7 +36,7 @@ final class OpenMeteoService {
             .init(name: "latitude",       value: String(format: "%.4f", lat)),
             .init(name: "longitude",      value: String(format: "%.4f", lon)),
             .init(name: "hourly",         value: "temperature_2m,precipitation_probability,weathercode,windspeed_10m"),
-            .init(name: "forecast_days",  value: "1"),
+            .init(name: "forecast_days",  value: "2"),
             .init(name: "timezone",       value: "auto"),
             .init(name: "timeformat",     value: "iso8601"),
             .init(name: "wind_speed_unit",value: "kmh"),
