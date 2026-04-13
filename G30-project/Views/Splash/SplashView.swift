@@ -43,11 +43,7 @@ struct SplashView: View {
                     .font(.system(size: 36, weight: .bold))
                     .foregroundStyle(.white)
 
-                // Tagline
-                Text("Predicting weather risks with clarity")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
-
+                
                 // Team Members
                 VStack(spacing: 6) {
                     Text("Team Members:")

@@ -12,8 +12,11 @@ struct G30_projectApp: App {
                     SplashView()
                         .transition(.opacity)
                 } else {
-                    DashboardView()
+                    RootView()
                         .transition(.opacity)
+                        .task {
+                            await AppNotificationManager.shared.requestPermission()
+                        }
                 }
             }
             .animation(.easeInOut(duration: 0.5), value: showSplash)

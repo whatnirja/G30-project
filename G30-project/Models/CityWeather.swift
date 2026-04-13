@@ -10,5 +10,7 @@ struct CityWeather {
 
     let hourly: [HourlyForecast]
     let factors: [StormFactor]
+    let alerts: [String]
+    let stormRiskScore: Int    
     let theme: WeatherTheme
 }
