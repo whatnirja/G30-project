@@ -7,63 +7,124 @@ enum StormSeverity: String {
     case high = "High"
     case severe = "Severe"
 
-    var fillAlpha: CGFloat { 0.28 }
-    var strokeAlpha: CGFloat { 0.75 }
-}
-
-// Extension of weather UI theme for Map Screen
-extension StormSeverity {
-    var theme: WeatherTheme {
+    var fillAlpha: CGFloat {
         switch self {
-        case .low: return .sunny
-        case .moderate: return .cloudy
-        case .high: return .rainy
-        case .severe: return .storm
+        case .low:      return 0.35
+        case .moderate: return 0.42
+        case .high:     return 0.52
+        case .severe:   return 0.62
+        }
+    }
+
+    var strokeAlpha: CGFloat {
+        switch self {
+        case .low:      return 0.70
+        case .moderate: return 0.82
+        case .high:     return 0.92
+        case .severe:   return 1.00
+        }
+    }
+
+    var glowLayers: Int {
+        switch self {
+        case .low:      return 1
+        case .moderate: return 2
+        case .high:     return 3
+        case .severe:   return 4
+        }
+    }
+
+    var lineWidth: CGFloat {
+        switch self {
+        case .low:      return 1.0
+        case .moderate: return 1.4
+        case .high:     return 1.8
+        case .severe:   return 2.2
         }
     }
 }
+
+extension StormSeverity {
+    var theme: WeatherTheme {
+        switch self {
+        case .low:      return .sunny
+        case .moderate: return .cloudy
+        case .high:     return .rainy
+        case .severe:   return .storm
+        }
+    }
+
+    var primaryUIColor: UIColor {
+        switch self {
+        case .low:
+            return UIColor(red: 0.92, green: 0.68, blue: 0.05, alpha: 1)
+        case .moderate:
+            return UIColor(red: 0.45, green: 0.52, blue: 0.60, alpha: 1)
+        case .high:
+            return UIColor(red: 0.12, green: 0.38, blue: 0.88, alpha: 1)
+        case .severe:
+            return UIColor(red: 0.14, green: 0.11, blue: 0.36, alpha: 1)
+        }
+    }
+
+    var secondaryUIColor: UIColor {
+        switch self {
+        case .low:
+            return UIColor(red: 0.95, green: 0.48, blue: 0.08, alpha: 1)
+        case .moderate:
+            return UIColor(red: 0.28, green: 0.32, blue: 0.38, alpha: 1)
+        case .high:
+            return UIColor(red: 0.22, green: 0.14, blue: 0.72, alpha: 1)
+        case .severe:
+            return UIColor(red: 0.05, green: 0.18, blue: 0.58, alpha: 1)
+        }
+    }
+}
+
 
 struct RiskRegion: Identifiable, Hashable {
     let id: String
     let name: String
     let severity: StormSeverity
     let summary: String
-    let polygonCoords: [CLLocationCoordinate2D]
+    let center: CLLocationCoordinate2D
+    let radiusMeters: CLLocationDistance
+    let weather: CityWeather
 
     static func == (lhs: RiskRegion, rhs: RiskRegion) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-enum OntarioMockData {
+
+enum RiskRegionMapper {
     static let ontarioCenter = CLLocationCoordinate2D(latitude: 50.0, longitude: -85.0)
 
-    static let regions: [RiskRegion] = [
-        makeRegion(from: .mockToronto),
-        makeRegion(from: .mockLondon),
-        makeRegion(from: .mockWindsor)
-    ]
+    static func makeRegions(from weatherItems: [CityWeather]) -> [RiskRegion] {
+        weatherItems.map { makeRegion(from: $0) }
+    }
 
-
-    private static func makeRegion(from weather: CityWeather) -> RiskRegion {
-        let (id, polygon) = regionGeometry(for: weather.city)
-
-        return RiskRegion(
-            id: id,
+    static func makeRegion(from weather: CityWeather) -> RiskRegion {
+        RiskRegion(
+            id: weather.city.lowercased().replacingOccurrences(of: " ", with: "-"),
             name: weather.city,
             severity: severity(from: weather.theme, condition: weather.condition),
-            summary: summary(from: weather),
-            polygonCoords: polygon
+            summary: "\(weather.condition) · \(weather.highLow)",
+            center: CLLocationCoordinate2D(latitude: weather.latitude, longitude: weather.longitude),
+            radiusMeters: radius(for: weather.theme, condition: weather.condition),
+            weather: weather
         )
     }
 
-    private static func summary(from weather: CityWeather) -> String {
-        "\(weather.condition) · \(weather.highLow)"
-    }
-
-    private static func severity(from theme: WeatherTheme, condition: String) -> StormSeverity {
+    static func severity(from theme: WeatherTheme, condition: String) -> StormSeverity {
         let lc = condition.lowercased()
-        if lc.contains("storm") || lc.contains("lightning") { return .severe }
-        if lc.contains("heavy") { return .high }
+
+        if lc.contains("storm") || lc.contains("lightning") || lc.contains("thunder") {
+            return .severe
+        }
+
+        if lc.contains("heavy") || lc.contains("rain") {
+            return .high
+        }
 
         switch theme {
         case .sunny:
@@ -74,146 +135,237 @@ enum OntarioMockData {
             return .high
         case .storm:
             return .severe
-        default:
+        case .snowy:
+            return .moderate
+        case .windy:
+            return .moderate
+        case .defaultTheme:
             return .moderate
         }
     }
 
-    
-    private static func regionGeometry(for city: String) -> (id: String, polygon: [CLLocationCoordinate2D]) {
-        switch city.lowercased() {
-        case "toronto":
-            return (
-                "toronto",
-                [
-                    .init(latitude: 44.15, longitude: -80.10),
-                    .init(latitude: 43.15, longitude: -80.10),
-                    .init(latitude: 43.15, longitude: -78.80),
-                    .init(latitude: 44.15, longitude: -78.80)
-                ]
-            )
+    static func radius(for theme: WeatherTheme, condition: String) -> CLLocationDistance {
+        let lc = condition.lowercased()
 
-        case "london":
-            return (
-                "london",
-                [
-                    .init(latitude: 43.20, longitude: -81.60),
-                    .init(latitude: 42.70, longitude: -81.60),
-                    .init(latitude: 42.70, longitude: -80.90),
-                    .init(latitude: 43.20, longitude: -80.90)
-                ]
-            )
+        if lc.contains("storm") || lc.contains("lightning") || lc.contains("thunder") {
+            return 70000
+        }
+        if lc.contains("heavy") || lc.contains("rain") {
+            return 55000
+        }
 
-        case "windsor":
-            return (
-                "windsor",
-                [
-                    .init(latitude: 42.55, longitude: -83.35),
-                    .init(latitude: 42.10, longitude: -83.35),
-                    .init(latitude: 42.10, longitude: -82.65),
-                    .init(latitude: 42.55, longitude: -82.65)
-                ]
-            )
-
-        default:
-            return (
-                city.lowercased().replacingOccurrences(of: " ", with: "-"),
-                [
-                    .init(latitude: ontarioCenter.latitude + 0.7, longitude: ontarioCenter.longitude - 0.7),
-                    .init(latitude: ontarioCenter.latitude - 0.7, longitude: ontarioCenter.longitude - 0.7),
-                    .init(latitude: ontarioCenter.latitude - 0.7, longitude: ontarioCenter.longitude + 0.7),
-                    .init(latitude: ontarioCenter.latitude + 0.7, longitude: ontarioCenter.longitude + 0.7)
-                ]
-            )
+        switch theme {
+        case .sunny:
+            return 30000
+        case .cloudy:
+            return 40000
+        case .rainy:
+            return 55000
+        case .storm:
+            return 70000
+        case .snowy:
+            return 50000
+        case .windy:
+            return 45000
+        case .defaultTheme:
+            return 40000
         }
     }
 }
 
-struct LegendPill: View {
-    let label: String
+
+struct LegendItem: View {
+    let severity: StormSeverity
 
     var body: some View {
-        Text(label)
-            .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-    }
-}
+        HStack(spacing: 5) {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(uiColor: severity.primaryUIColor),
+                            Color(uiColor: severity.secondaryUIColor)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 14, height: 14)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.8)
+                )
+                .shadow(color: Color(uiColor: severity.secondaryUIColor).opacity(0.35), radius: 4)
 
-struct RiskRegionDetailSheet: View {
-    let region: RiskRegion
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(region.name).font(.title2).bold()
-                Text("Severity: \(region.severity.rawValue)").font(.headline)
-                Text(region.summary).font(.body)
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Region Summary")
-            .navigationBarTitleDisplayMode(.inline)
+            Text(severity.rawValue)
+                .font(.caption2)
+                .foregroundStyle(.primary)
         }
     }
 }
 
-struct OntarioMapView: View {
-    @State private var selectedRegion: RiskRegion?
-    @State private var showDetail = false
-
-    @State private var mapRegion = MKCoordinateRegion(
-        center: OntarioMockData.ontarioCenter,
-        span: MKCoordinateSpan(latitudeDelta: 12.5, longitudeDelta: 18.0)
-    )
-
-    private var currentTheme: WeatherTheme {
-        selectedRegion?.severity.theme ?? .defaultTheme
-    }
-
+struct LegendCard: View {
     var body: some View {
-        ZStack(alignment: .top) {
-            LinearGradient(colors: currentTheme.gradient, startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-
-            OntarioRiskMapRepresentable(
-                region: $mapRegion,
-                riskRegions: OntarioMockData.regions,
-                onSelect: { rr in
-                    selectedRegion = rr
-                    showDetail = true
-                }
-            )
-            .ignoresSafeArea()
-
-            legend
-                .padding(.top, 12)
-        }
-        .sheet(isPresented: $showDetail) {
-            if let selectedRegion {
-                RiskRegionDetailSheet(region: selectedRegion)
-            }
-        }
-    }
-
-    private var legend: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Ontario Storm Risk")
                 .font(.headline)
 
-            HStack(spacing: 10) {
-                LegendPill(label: "Low")
-                LegendPill(label: "Moderate")
-                LegendPill(label: "High")
-                LegendPill(label: "Severe")
+            HStack(spacing: 12) {
+                LegendItem(severity: .low)
+                LegendItem(severity: .moderate)
+                LegendItem(severity: .high)
+                LegendItem(severity: .severe)
             }
         }
         .padding(12)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .padding(.horizontal, 14)
+    }
+}
+
+
+struct OntarioMapView: View {
+    @State private var selectedRegion: RiskRegion?
+    @State private var navigateToDeepDive = false
+    @State private var riskRegions: [RiskRegion] = []
+
+    @State private var mapRegion = MKCoordinateRegion(
+        center: RiskRegionMapper.ontarioCenter,
+        span: MKCoordinateSpan(latitudeDelta: 12.5, longitudeDelta: 18.0)
+    )
+
+    private let cityStorage = CityStorage()
+    private let weatherCacheStorage = WeatherCacheStorage()
+
+    private var currentTheme: WeatherTheme {
+        selectedRegion?.severity.theme ?? .defaultTheme
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .top) {
+                LinearGradient(colors: currentTheme.gradient, startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea()
+
+                OntarioRiskMapRepresentable(
+                    region: $mapRegion,
+                    riskRegions: riskRegions,
+                    onSelect: { rr in
+                        selectedRegion = rr
+                        navigateToDeepDive = true
+                    }
+                )
+                .ignoresSafeArea()
+
+                LegendCard()
+                    .padding(.top, 12)
+
+                if let selectedRegion {
+                    VStack {
+                        Spacer()
+
+                        Button {
+                            navigateToDeepDive = true
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(selectedRegion.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+
+                                    Text(selectedRegion.summary)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.blue)
+                            }
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 18)
+                        }
+                    }
+                }
+
+                NavigationLink(
+                    destination: Group {
+                        if let selectedRegion {
+                            CityDeepDive(data: selectedRegion.weather)
+                        } else {
+                            EmptyView()
+                        }
+                    },
+                    isActive: $navigateToDeepDive
+                ) {
+                    EmptyView()
+                }
+                .hidden()
+            }
+            .task {
+                loadRealRegions()
+            }
+        }
+    }
+
+    private func loadRealRegions() {
+        let savedCities = cityStorage.fetchCities()
+
+        let weatherItems: [CityWeather] = savedCities.compactMap { savedCity -> CityWeather? in
+            guard let cached = weatherCacheStorage.fetchWeather(for: savedCity.cityName) else {
+                return nil
+            }
+
+            return CityWeather(
+                city:           savedCity.cityName,
+                country:        savedCity.country,
+                latitude:       savedCity.latitude,
+                longitude:      savedCity.longitude,
+                temperature:    cached.temperature,
+                condition:      cached.condition,
+                highLow:        cached.highLow,
+                hourly:         cached.hourly,
+                factors:        cached.factors,
+                alerts:         cached.alerts,
+                stormRiskScore: cached.stormRiskScore,
+                theme:          cached.theme
+            )
+        }
+
+        let mappedRegions = RiskRegionMapper.makeRegions(from: weatherItems)
+        riskRegions = mappedRegions
+
+        if !mappedRegions.isEmpty {
+            updateMapRegionToFitRegions(mappedRegions)
+        }
+    }
+
+    private func updateMapRegionToFitRegions(_ regions: [RiskRegion]) {
+        let allCoords = regions.map(\.center)
+        guard !allCoords.isEmpty else { return }
+
+        let minLat = allCoords.map(\.latitude).min() ?? RiskRegionMapper.ontarioCenter.latitude
+        let maxLat = allCoords.map(\.latitude).max() ?? RiskRegionMapper.ontarioCenter.latitude
+        let minLon = allCoords.map(\.longitude).min() ?? RiskRegionMapper.ontarioCenter.longitude
+        let maxLon = allCoords.map(\.longitude).max() ?? RiskRegionMapper.ontarioCenter.longitude
+
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((maxLat - minLat) + 3.0, 6.0),
+            longitudeDelta: max((maxLon - minLon) + 3.0, 6.0)
+        )
+
+        mapRegion = MKCoordinateRegion(center: center, span: span)
     }
 }
 
@@ -229,7 +381,10 @@ struct OntarioRiskMapRepresentable: UIViewRepresentable {
         map.showsCompass = true
         map.isRotateEnabled = false
 
-        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleMapTap(_:)))
+        let tap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleMapTap(_:))
+        )
         tap.cancelsTouchesInView = false
         map.addGestureRecognizer(tap)
 
@@ -245,17 +400,14 @@ struct OntarioRiskMapRepresentable: UIViewRepresentable {
 
         let sw = CLLocationCoordinate2D(latitude: 41.5, longitude: -95.5)
         let ne = CLLocationCoordinate2D(latitude: 56.9, longitude: -74.0)
-
         let swPoint = MKMapPoint(sw)
         let nePoint = MKMapPoint(ne)
-
         let bounds = MKMapRect(
             x: min(swPoint.x, nePoint.x),
             y: min(swPoint.y, nePoint.y),
             width: abs(nePoint.x - swPoint.x),
             height: abs(nePoint.y - swPoint.y)
         )
-
         map.setCameraBoundary(MKMapView.CameraBoundary(mapRect: bounds), animated: false)
 
         context.coordinator.applyOverlays(on: map, riskRegions: riskRegions)
@@ -267,46 +419,88 @@ struct OntarioRiskMapRepresentable: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         private let onSelect: (RiskRegion) -> Void
-        private var overlayIdToRegion: [ObjectIdentifier: RiskRegion] = [:]
 
         init(onSelect: @escaping (RiskRegion) -> Void) {
             self.onSelect = onSelect
         }
 
         func applyOverlays(on map: MKMapView, riskRegions: [RiskRegion]) {
-            if map.overlays.count == riskRegions.count { return }
+            let expected = riskRegions.reduce(0) { $0 + 1 + $1.severity.glowLayers }
+            if map.overlays.count == expected { return }
+
             map.removeOverlays(map.overlays)
-            overlayIdToRegion.removeAll()
 
             for rr in riskRegions {
-                let polygon = MKPolygon(coordinates: rr.polygonCoords, count: rr.polygonCoords.count)
-                overlayIdToRegion[ObjectIdentifier(polygon)] = rr
-                map.addOverlay(polygon)
+                for layer in 1...rr.severity.glowLayers {
+                    let expandedRadius = rr.radiusMeters + (Double(layer) * 16000)
+
+                    let glowCircle = HeatmapCircle(center: rr.center, radius: expandedRadius)
+                    glowCircle.riskRegion = rr
+                    glowCircle.glowLayer = layer
+                    glowCircle.totalLayers = rr.severity.glowLayers
+                    map.addOverlay(glowCircle, level: .aboveRoads)
+                }
+
+                let baseCircle = HeatmapCircle(center: rr.center, radius: rr.radiusMeters)
+                baseCircle.riskRegion = rr
+                baseCircle.glowLayer = 0
+                baseCircle.totalLayers = rr.severity.glowLayers
+                map.addOverlay(baseCircle, level: .aboveRoads)
             }
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            guard let polygon = overlay as? MKPolygon else {
+            guard let circle = overlay as? HeatmapCircle,
+                  let rr = circle.riskRegion else {
                 return MKOverlayRenderer(overlay: overlay)
             }
 
-            let renderer = MKPolygonRenderer(polygon: polygon)
+            let renderer = MKCircleRenderer(circle: circle)
 
-            if let rr = overlayIdToRegion[ObjectIdentifier(polygon)] {
-                let color: UIColor
-                switch rr.severity {
-                case .low: color = .systemGreen
-                case .moderate: color = .systemYellow
-                case .high: color = .systemOrange
-                case .severe: color = .systemRed
-                }
+            if circle.glowLayer == 0 {
+                renderer.fillColor = rr.severity.primaryUIColor.withAlphaComponent(rr.severity.fillAlpha)
+                renderer.strokeColor = rr.severity.secondaryUIColor.withAlphaComponent(rr.severity.strokeAlpha)
+                renderer.lineWidth = rr.severity.lineWidth
+            } else {
+                let total = Double(circle.totalLayers)
+                let current = Double(circle.glowLayer)
+                let alphaFraction = 1.0 - (current / total)
+                let glowAlpha = rr.severity.fillAlpha * alphaFraction * 0.65
 
-                renderer.fillColor = color.withAlphaComponent(rr.severity.fillAlpha)
-                renderer.strokeColor = color.withAlphaComponent(rr.severity.strokeAlpha)
-                renderer.lineWidth = 2.0
+                let blendedColor = interpolatedColor(
+                    from: rr.severity.primaryUIColor,
+                    to: rr.severity.secondaryUIColor,
+                    t: current / total
+                )
+
+                renderer.fillColor = blendedColor.withAlphaComponent(glowAlpha)
+                renderer.strokeColor = .clear
+                renderer.lineWidth = 0
             }
 
             return renderer
+        }
+
+        private func interpolatedColor(from c1: UIColor, to c2: UIColor, t: Double) -> UIColor {
+            var r1: CGFloat = 0
+            var g1: CGFloat = 0
+            var b1: CGFloat = 0
+            var a1: CGFloat = 0
+
+            var r2: CGFloat = 0
+            var g2: CGFloat = 0
+            var b2: CGFloat = 0
+            var a2: CGFloat = 0
+
+            c1.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+            c2.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+
+            return UIColor(
+                red: r1 + (r2 - r1) * t,
+                green: g1 + (g2 - g1) * t,
+                blue: b1 + (b2 - b1) * t,
+                alpha: 1
+            )
         }
 
         @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
@@ -314,26 +508,37 @@ struct OntarioRiskMapRepresentable: UIViewRepresentable {
             let tapPoint = recognizer.location(in: mapView)
 
             for overlay in mapView.overlays {
-                guard let polygon = overlay as? MKPolygon,
-                      let rr = overlayIdToRegion[ObjectIdentifier(polygon)],
-                      let renderer = mapView.renderer(for: polygon) as? MKPolygonRenderer
+                guard
+                    let circle = overlay as? HeatmapCircle,
+                    circle.glowLayer == 0,
+                    let rr = circle.riskRegion,
+                    let renderer = mapView.renderer(for: circle) as? MKCircleRenderer
                 else { continue }
-
-                if renderer.path == nil {
-                    renderer.createPath()
-                }
-                guard let path = renderer.path else { continue }
 
                 let mapPoint = MKMapPoint(mapView.convert(tapPoint, toCoordinateFrom: mapView))
                 let rendererPoint = renderer.point(for: mapPoint)
+                let circleBounds = renderer.path.boundingBox
 
-                if path.contains(rendererPoint) {
-                    onSelect(rr)
-                    return
+                if circleBounds.contains(rendererPoint) {
+                    let center = CGPoint(x: circleBounds.midX, y: circleBounds.midY)
+                    let dx = rendererPoint.x - center.x
+                    let dy = rendererPoint.y - center.y
+                    let distance = sqrt(dx * dx + dy * dy)
+
+                    if distance <= circleBounds.width / 2 {
+                        onSelect(rr)
+                        return
+                    }
                 }
             }
         }
     }
+}
+
+final class HeatmapCircle: MKCircle {
+    var riskRegion: RiskRegion?
+    var glowLayer: Int = 0
+    var totalLayers: Int = 1
 }
 
 #Preview {

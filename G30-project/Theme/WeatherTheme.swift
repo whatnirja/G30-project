@@ -6,19 +6,25 @@ enum WeatherTheme {
     var gradient: [Color] {
         switch self {
         case .sunny:
-            return [Color.white, Color.yellow.opacity(0.05), Color.orange.opacity(0.35)] 
+            return [Color.yellow.opacity(0.6), Color.orange.opacity(0.8)]
+
         case .cloudy:
-            return [Color.white, Color.gray.opacity(0.25), Color.gray.opacity(0.35)]
+            return [Color.gray.opacity(0.5), Color.gray.opacity(0.8)]
+
         case .rainy:
-            return [Color.white, Color.blue.opacity(0.05), Color.blue.opacity(0.35)]
+            return [Color.blue.opacity(0.6), Color.indigo.opacity(0.8)]
+
         case .storm:
-            return [Color.white, Color.blue.opacity(0.05), Color.black.opacity(0.90)]
+            return [Color.black.opacity(0.85), Color.blue.opacity(0.7)]
+
         case .snowy:
-            return [Color.white, Color.cyan.opacity(0.25), Color.blue.opacity(0.50)]
+            return [Color.cyan.opacity(0.5), Color.blue.opacity(0.6)]
+
         case .windy:
-            return [Color.white, Color.mint.opacity(0.08), Color.gray.opacity(0.65)]
+            return [Color.mint.opacity(0.5), Color.gray.opacity(0.6)]
+
         case .defaultTheme:
-            return [Color.white, Color.gray.opacity(0.15), Color.blue.opacity(0.55)]
+            return [Color.blue.opacity(0.5), Color.gray.opacity(0.5)]
         }
     }
 }
